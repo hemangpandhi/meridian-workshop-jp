@@ -15,10 +15,11 @@
             <div class="kpi-header">
               <span class="kpi-label">{{ t('dashboard.kpi.inventoryTurnover') }}</span>
             </div>
-            <div class="kpi-value">4.2</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: 4.5 (-6.67%)</div>
+            <!-- Definition pending with the client: no placeholder number is shown -->
+            <div class="kpi-value">—</div>
+            <div class="kpi-goal">{{ t('dashboard.kpi.definitionPending') }}</div>
             <div class="kpi-progress-bar">
-              <div class="kpi-progress" style="width: 93.33%"></div>
+              <div class="kpi-progress" style="width: 0%"></div>
             </div>
           </div>
 
@@ -26,10 +27,10 @@
             <div class="kpi-header">
               <span class="kpi-label">{{ t('dashboard.kpi.ordersFulfilled') }}</span>
             </div>
-            <div class="kpi-value">{{ ordersData.fulfilled }}</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ ordersData.goal }} ({{ calculatePercentage(ordersData.fulfilled, ordersData.goal) }}%)</div>
+            <div class="kpi-value">{{ fulfilledKpi.value }}</div>
+            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ fulfilledKpi.goal }} ({{ calculatePercentage(fulfilledKpi.value, fulfilledKpi.goal) }}%)</div>
             <div class="kpi-progress-bar">
-              <div class="kpi-progress" :style="{ width: calculatePercentage(ordersData.fulfilled, ordersData.goal) + '%' }"></div>
+              <div class="kpi-progress" :style="{ width: clampPercent(fulfilledKpi.value / fulfilledKpi.goal * 100) + '%' }"></div>
             </div>
           </div>
 
@@ -37,10 +38,10 @@
             <div class="kpi-header">
               <span class="kpi-label">{{ t('dashboard.kpi.orderFillRate') }}</span>
             </div>
-            <div class="kpi-value">{{ fillRate }}%</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: 95% ({{ fillRate - 95 > 0 ? '+' : '' }}{{ (fillRate - 95).toFixed(2) }}%)</div>
+            <div class="kpi-value">{{ fillRate === null ? '—' : fillRate.toFixed(1) + '%' }}</div>
+            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ FILL_RATE_GOAL }}%<template v-if="fillRate !== null"> ({{ formatSigned(fillRate - FILL_RATE_GOAL) }}%)</template></div>
             <div class="kpi-progress-bar">
-              <div class="kpi-progress success" :style="{ width: (fillRate / 95 * 100) + '%' }"></div>
+              <div class="kpi-progress success" :style="{ width: clampPercent(fillRate === null ? 0 : fillRate / FILL_RATE_GOAL * 100) + '%' }"></div>
             </div>
           </div>
 
@@ -59,10 +60,10 @@
             <div class="kpi-header">
               <span class="kpi-label">{{ t('dashboard.kpi.avgProcessingTime') }}</span>
             </div>
-            <div class="kpi-value">2.8</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: 3.0 (-6.67%)</div>
+            <div class="kpi-value">{{ avgProcessingTime === null ? '—' : avgProcessingTime.toFixed(1) }}</div>
+            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ PROCESSING_TIME_GOAL.toFixed(1) }}<template v-if="avgProcessingTime !== null"> ({{ formatSigned((avgProcessingTime / PROCESSING_TIME_GOAL - 1) * 100) }}%)</template></div>
             <div class="kpi-progress-bar">
-              <div class="kpi-progress success" style="width: 93.33%"></div>
+              <div class="kpi-progress success" :style="{ width: clampPercent(avgProcessingTime === null ? 0 : avgProcessingTime / PROCESSING_TIME_GOAL * 100) + '%' }"></div>
             </div>
           </div>
         </div>
@@ -337,8 +338,18 @@ export default {
       getCurrentFilters
     } = useFilters()
 
-    const ordersData = ref({ fulfilled: 187, goal: 200 })
-    const fillRate = ref(96.8)
+    // KPI goals. Orders Fulfilled: 200 for the full year, 17 (200 / 12, rounded) for a single month
+    const FULFILLED_GOAL_YEAR = 200
+    const FULFILLED_GOAL_MONTH = 17
+    const FILL_RATE_GOAL = 95
+    const PROCESSING_TIME_GOAL = 3.0
+
+    const clampPercent = (value) => {
+      if (!Number.isFinite(value)) return 0
+      return Math.max(0, Math.min(100, value))
+    }
+
+    const formatSigned = (value, digits = 2) => (value > 0 ? '+' : '') + value.toFixed(digits)
 
     const revenueGoal = computed(() => {
       // $800K per month, so if looking at all months (12 months), goal is 12 * 800K = 9.6M
@@ -365,6 +376,37 @@ export default {
       return counts
     })
 
+    // KPIs below are computed from allOrders, which the API already filters by
+    // period, location, category and status, so they follow the filter selection.
+    const fulfilledKpi = computed(() => ({
+      value: statusData.value.delivered,
+      goal: selectedPeriod.value === 'all' ? FULFILLED_GOAL_YEAR : FULFILLED_GOAL_MONTH
+    }))
+
+    // (Delivered + Shipped) / all orders x 100. null when there are no orders.
+    const fillRate = computed(() => {
+      const total = allOrders.value.length
+      if (total === 0) return null
+      return ((statusData.value.delivered + statusData.value.shipped) / total) * 100
+    })
+
+    // Mean days from order_date to actual_delivery over Delivered orders that have both dates.
+    // null when no order qualifies. Shared by the KPI card and the order-health panel.
+    const avgProcessingTime = computed(() => {
+      let totalDays = 0
+      let countWithDates = 0
+      allOrders.value.forEach(o => {
+        if (o.status.toLowerCase() === 'delivered' && o.order_date && o.actual_delivery) {
+          const orderDate = new Date(o.order_date)
+          const deliveryDate = new Date(o.actual_delivery)
+          if (isNaN(orderDate.getTime()) || isNaN(deliveryDate.getTime())) return
+          totalDays += Math.round((deliveryDate - orderDate) / (1000 * 60 * 60 * 24))
+          countWithDates++
+        }
+      })
+      return countWithDates > 0 ? totalDays / countWithDates : null
+    })
+
     const orderHealthMetrics = computed(() => {
       const totalOrders = allOrders.value.length
       const totalValue = allOrders.value.reduce((sum, order) => sum + (order.total_value || 0), 0)
@@ -380,19 +422,8 @@ export default {
       }).length
       const onTimeRate = deliveredOrders.length > 0 ? (onTimeDeliveries / deliveredOrders.length) * 100 : 0
 
-      // Calculate average fulfillment speed (days from order to delivery for delivered orders)
-      let totalDays = 0
-      let countWithDates = 0
-      deliveredOrders.forEach(o => {
-        if (o.order_date && o.actual_delivery) {
-          const orderDate = new Date(o.order_date)
-          const deliveryDate = new Date(o.actual_delivery)
-          const days = Math.round((deliveryDate - orderDate) / (1000 * 60 * 60 * 24))
-          totalDays += days
-          countWithDates++
-        }
-      })
-      const avgFulfillmentDays = countWithDates > 0 ? totalDays / countWithDates : 0
+      // Average fulfillment speed: same value as the Avg Processing Time KPI (0 when no data)
+      const avgFulfillmentDays = avgProcessingTime.value ?? 0
 
       return {
         totalOrders,
@@ -558,26 +589,38 @@ export default {
       return allBacklogItems.value.filter(b => validSkus.has(b.item_sku))
     })
 
+    // Only the most recent request may update the page, so a slow response for an
+    // earlier filter selection cannot overwrite the data of the current one.
+    let latestRequestId = 0
+
     const loadData = async () => {
+      const requestId = ++latestRequestId
       try {
         loading.value = true
+        error.value = null
         const filters = getCurrentFilters()
 
-        const [summaryData, ordersData, inventoryData, backlogData] = await Promise.all([
+        const [summaryData, ordersResult, inventoryData, backlogData] = await Promise.all([
           api.getDashboardSummary(filters),
           api.getOrders(filters),
           api.getInventory(filters),
           api.getBacklog()
         ])
 
+        if (requestId !== latestRequestId) return // a newer request has started
+
         summary.value = summaryData
-        allOrders.value = ordersData
+        allOrders.value = ordersResult
         inventoryItems.value = inventoryData
         allBacklogItems.value = backlogData
       } catch (err) {
-        error.value = 'Failed to load dashboard data: ' + err.message
+        if (requestId === latestRequestId) {
+          error.value = 'Failed to load dashboard data: ' + err.message
+        }
       } finally {
-        loading.value = false
+        if (requestId === latestRequestId) {
+          loading.value = false
+        }
       }
     }
 
@@ -684,8 +727,13 @@ export default {
       loading,
       error,
       summary,
-      ordersData,
+      fulfilledKpi,
       fillRate,
+      avgProcessingTime,
+      FILL_RATE_GOAL,
+      PROCESSING_TIME_GOAL,
+      clampPercent,
+      formatSigned,
       statusData,
       orderHealthMetrics,
       categoryData,

@@ -125,10 +125,30 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { api } from '../api'
+import { useFilters } from '../composables/useFilters'
 
 export default {
   name: 'Reports',
+  setup() {
+    // Shared filter state (same singleton the Overview page uses)
+    const { selectedPeriod, selectedLocation, selectedCategory, selectedStatus, getCurrentFilters } = useFilters()
+    return { selectedPeriod, selectedLocation, selectedCategory, selectedStatus, getCurrentFilters }
+  },
+  computed: {
+    // One key for all shared filters, so changing several at once (e.g. reset)
+    // triggers a single reload instead of one per filter.
+    filterKey() {
+      return JSON.stringify(this.getCurrentFilters())
+    }
+  },
+  watch: {
+    filterKey() { this.loadData() }
+  },
+  created() {
+    // Not reactive on purpose: only used to ignore stale responses
+    this.latestRequestId = 0
+  },
   data() {
     return {
       loading: true,
@@ -148,31 +168,38 @@ export default {
   methods: {
     async loadData() {
       console.log('Loading reports data...')
+      const requestId = ++this.latestRequestId
       try {
         this.loading = true
+        this.error = null
 
-        // Fetch quarterly data
-        console.log('Fetching quarterly data...')
-        const quarterlyResponse = await axios.get('/api/reports/quarterly')
-        this.quarterlyData = quarterlyResponse.data
+        const filters = this.getCurrentFilters()
+
+        // Fetch both reports in parallel, for the same filter selection
+        const [quarterly, monthly] = await Promise.all([
+          api.getQuarterlyReports(filters),
+          api.getMonthlyTrends(filters)
+        ])
+
+        if (requestId !== this.latestRequestId) return // a newer request has started
+
+        this.quarterlyData = quarterly
+        this.monthlyData = monthly
         console.log('Quarterly data:', this.quarterlyData)
-
-        // Fetch monthly data
-        console.log('Fetching monthly data...')
-        const monthlyResponse = await axios.get('/api/reports/monthly-trends')
-        this.monthlyData = monthlyResponse.data
         console.log('Monthly data:', this.monthlyData)
 
         // Calculate summary stats
-        console.log('Calculating summary stats...')
         this.calculateSummaryStats()
-        console.log('Summary stats calculated')
 
       } catch (err) {
         console.log('Error loading reports:', err)
-        this.error = 'Failed to load reports: ' + err.message
+        if (requestId === this.latestRequestId) {
+          this.error = 'Failed to load reports: ' + err.message
+        }
       } finally {
-        this.loading = false
+        if (requestId === this.latestRequestId) {
+          this.loading = false
+        }
         console.log('Loading complete')
       }
     },
