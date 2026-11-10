@@ -135,12 +135,19 @@ export default {
     const { selectedPeriod, selectedLocation, selectedCategory, selectedStatus, getCurrentFilters } = useFilters()
     return { selectedPeriod, selectedLocation, selectedCategory, selectedStatus, getCurrentFilters }
   },
+  computed: {
+    // One key for all shared filters, so changing several at once (e.g. reset)
+    // triggers a single reload instead of one per filter.
+    filterKey() {
+      return JSON.stringify(this.getCurrentFilters())
+    }
+  },
   watch: {
-    // Reload whenever any shared filter changes
-    selectedPeriod() { this.loadData() },
-    selectedLocation() { this.loadData() },
-    selectedCategory() { this.loadData() },
-    selectedStatus() { this.loadData() }
+    filterKey() { this.loadData() }
+  },
+  created() {
+    // Not reactive on purpose: only used to ignore stale responses
+    this.latestRequestId = 0
   },
   data() {
     return {
@@ -161,31 +168,38 @@ export default {
   methods: {
     async loadData() {
       console.log('Loading reports data...')
+      const requestId = ++this.latestRequestId
       try {
         this.loading = true
+        this.error = null
 
         const filters = this.getCurrentFilters()
 
-        // Fetch quarterly data
-        console.log('Fetching quarterly data...')
-        this.quarterlyData = await api.getQuarterlyReports(filters)
-        console.log('Quarterly data:', this.quarterlyData)
+        // Fetch both reports in parallel, for the same filter selection
+        const [quarterly, monthly] = await Promise.all([
+          api.getQuarterlyReports(filters),
+          api.getMonthlyTrends(filters)
+        ])
 
-        // Fetch monthly data
-        console.log('Fetching monthly data...')
-        this.monthlyData = await api.getMonthlyTrends(filters)
+        if (requestId !== this.latestRequestId) return // a newer request has started
+
+        this.quarterlyData = quarterly
+        this.monthlyData = monthly
+        console.log('Quarterly data:', this.quarterlyData)
         console.log('Monthly data:', this.monthlyData)
 
         // Calculate summary stats
-        console.log('Calculating summary stats...')
         this.calculateSummaryStats()
-        console.log('Summary stats calculated')
 
       } catch (err) {
         console.log('Error loading reports:', err)
-        this.error = 'Failed to load reports: ' + err.message
+        if (requestId === this.latestRequestId) {
+          this.error = 'Failed to load reports: ' + err.message
+        }
       } finally {
-        this.loading = false
+        if (requestId === this.latestRequestId) {
+          this.loading = false
+        }
         console.log('Loading complete')
       }
     },

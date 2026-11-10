@@ -589,9 +589,15 @@ export default {
       return allBacklogItems.value.filter(b => validSkus.has(b.item_sku))
     })
 
+    // Only the most recent request may update the page, so a slow response for an
+    // earlier filter selection cannot overwrite the data of the current one.
+    let latestRequestId = 0
+
     const loadData = async () => {
+      const requestId = ++latestRequestId
       try {
         loading.value = true
+        error.value = null
         const filters = getCurrentFilters()
 
         const [summaryData, ordersResult, inventoryData, backlogData] = await Promise.all([
@@ -601,14 +607,20 @@ export default {
           api.getBacklog()
         ])
 
+        if (requestId !== latestRequestId) return // a newer request has started
+
         summary.value = summaryData
         allOrders.value = ordersResult
         inventoryItems.value = inventoryData
         allBacklogItems.value = backlogData
       } catch (err) {
-        error.value = 'Failed to load dashboard data: ' + err.message
+        if (requestId === latestRequestId) {
+          error.value = 'Failed to load dashboard data: ' + err.message
+        }
       } finally {
-        loading.value = false
+        if (requestId === latestRequestId) {
+          loading.value = false
+        }
       }
     }
 
