@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capabilities: Inventory Dashboard Modernization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#1d4ed8;--soft:#eff6ff;--ok:#16a34a;--warn:#d97706;--bad:#dc2626}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0f172a;font-family:'Noto Sans JP',sans-serif;color:var(--ink)}
+.deck{position:relative;width:100vw;height:100vh;overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:4.5vh 5.5vw 6.5vh;background:#fff}
+.slide.on{display:flex}
+.kicker{font-size:1.5vh;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:1.2vh}
+h1{font-size:6.2vh;line-height:1.2;margin:0 0 3vh;font-weight:900}
+h2{font-size:3.7vh;line-height:1.25;margin:0 0 2.2vh;font-weight:700}
+p,li{font-size:2vh;line-height:1.5;color:#1e293b}
+ul{padding-left:1.3em;margin:0}li{margin:.7vh 0}
+.sub{font-size:2.8vh;color:var(--muted)}
+.cols{display:grid;gap:1.5vw}.c2{grid-template-columns:1fr 1fr}.c3{grid-template-columns:repeat(3,1fr)}
+.card{border:1px solid var(--line);border-radius:14px;padding:1.8vh 1.2vw;background:#fff}
+.card h3{margin:0 0 .7vh;font-size:2.3vh}.card p,.card li{font-size:1.85vh;margin:.4vh 0}
+.card .who{font-size:1.55vh;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.card .cue{margin-top:1vh;padding:.8vh .8vw;border-radius:8px;background:var(--soft);font-size:1.7vh;color:#1e3a8a}
+.card .res{margin-top:1vh;padding:.8vh .8vw;border-radius:8px;background:#f0fdf4;font-size:1.7vh;color:#166534;font-weight:500}
+.soft{background:var(--soft);border-color:#bfdbfe}
+.num{display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;border-radius:50%;width:3.4vh;height:3.4vh;font-weight:700;font-size:1.8vh;margin-bottom:.7vh}
+.title{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff}
+.title h1{color:#fff}.title .sub,.title .kicker{color:#bfdbfe}
+.pill{display:inline-block;padding:.2vh .8vw;border-radius:999px;font-size:1.55vh;font-weight:700;white-space:nowrap}
+.p-in{background:#dcfce7;color:#166534}.p-opt{background:#fef3c7;color:#92400e}
+.bar{position:absolute;left:0;bottom:0;height:.8vh;background:var(--accent);transition:width .2s}
+.pg{position:absolute;right:2vw;bottom:2vh;font-size:1.7vh;color:var(--muted)}
+.hint{position:absolute;left:2vw;bottom:2vh;font-size:1.6vh;color:#94a3b8}
+.foot{font-size:1.65vh;color:var(--muted);margin-top:1.2vh}
+table{border-collapse:collapse;width:100%;font-size:1.65vh}
+th,td{border-bottom:1px solid var(--line);padding:.75vh .65vw;text-align:left;vertical-align:top;line-height:1.38}
+th{background:#f1f5f9;font-weight:700;font-size:1.5vh;color:#334155}
+td:first-child{font-weight:700;white-space:nowrap}
+td.n,th.n{text-align:right;white-space:nowrap}
+tr.tot td{background:#eff6ff;font-weight:700}
+.flow{display:flex;align-items:stretch}
+.box{flex:1;border:2px solid var(--line);border-radius:12px;padding:1.3vh .9vw;background:#fff;text-align:center}
+.box b{display:block;font-size:1.95vh;margin-bottom:.4vh}.box span{font-size:1.65vh;color:var(--muted)}
+.box.good{border-color:#bbf7d0;background:#f0fdf4}.box.bad{border-color:#fecaca;background:#fef2f2}
+.arr{display:flex;align-items:center;justify-content:center;width:2.6vw;font-size:2.8vh;color:var(--muted)}
+.gantt{display:grid;grid-template-columns:19vw repeat(16,1fr);font-size:1.7vh;align-items:center}
+.gantt .wk{text-align:center;color:var(--muted);font-size:1.5vh;padding-bottom:.6vh}
+.gantt .nm{padding:.6vh 0;font-weight:700}
+.gantt .nm small{display:block;font-weight:400;color:var(--muted);font-size:1.5vh}
+.gantt .cell{border-left:1px dashed var(--line);min-height:5.2vh;display:flex;align-items:center}
+.gb{height:3.4vh;border-radius:6px;background:var(--accent);color:#fff;font-size:1.5vh;display:flex;align-items:center;padding:0 .6vw;white-space:nowrap;overflow:hidden}
+.gb.o{background:#f59e0b}.gb.s{background:#0ea5e9}.gb.g{background:#16a34a}
+.stack{display:flex;flex-direction:column;gap:.7vh}
+.layer{border-radius:10px;padding:1.3vh 1.1vw}
+.layer b{display:block;font-size:2vh}.layer span{font-size:1.65vh}
+.l1{background:var(--accent);color:#fff}.l1 span{color:#dbeafe}
+.l2{background:#93c5fd;color:#0f172a}
+.l3{background:#fef3c7;color:#451a03;border:2px dashed #f59e0b}
+.rule{display:flex;gap:.9vw;align-items:flex-start;margin:.9vh 0;font-size:1.85vh;line-height:1.45}
+.rule i{font-style:normal;background:var(--accent);color:#fff;border-radius:50%;min-width:2.9vh;height:2.9vh;display:flex;align-items:center;justify-content:center;font-size:1.6vh;font-weight:700}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:1.5vw}
+.cmp .col{border-radius:14px;padding:1.6vh 1.3vw}
+.cmp .then{background:#fef2f2;border:1px solid #fecaca}.cmp .now{background:#f0fdf4;border:1px solid #bbf7d0}
+.cmp h3{margin:0 0 .6vh;font-size:2.2vh}.cmp .then h3{color:#991b1b}.cmp .now h3{color:#166534}
+.cmp li{font-size:1.8vh;margin:.4vh 0}
+.svgbox{border:1px solid var(--line);border-radius:14px;padding:1vh 1vw;background:#fff}
+.svgbox svg{display:block;width:100%;height:auto;max-height:62vh}
+</style></head>
+<body>
+<div class="deck" id="deck">
+
+<!-- 1. Title -->
+<section class="slide title on">
+  <div class="kicker">RFP MC-2026-0417 · Capabilities presentation</div>
+  <h1>Inventory Dashboard<br>Modernization</h1>
+  <p class="sub">Numbers your team can trust. Changes your IT team can approve.</p>
+  <p class="sub" style="margin-top:6vh">Prepared for Meridian Components, Inc. · Basecamp Consulting (sample)</p>
+</section>
+
+<!-- 2. Our understanding -->
+<section class="slide">
+  <div class="kicker">1 · Our understanding</div>
+  <h2>A working dashboard that nobody fully trusts, and three decision-makers who each need something different</h2>
+  <div class="flow" style="margin-bottom:2vh">
+    <div class="box bad"><b>KPIs ignore the filters</b><span>The team rebuilds numbers in spreadsheets</span></div>
+    <div class="arr">+</div>
+    <div class="box bad"><b>No automated tests</b><span>IT is cautious about approving changes</span></div>
+    <div class="arr">+</div>
+    <div class="box bad"><b>Unfinished work</b><span>Reports defects, no Restocking view, thin handoff</span></div>
+  </div>
+  <div class="cols c3">
+    <div class="card"><div class="who">J. Okafor · Procurement</div><h3>Predictability</h3>
+      <p>Runs the selection and scores by the published criteria.</p>
+      <div class="cue">Wants a firm price ceiling and a schedule that can be relied on.</div></div>
+    <div class="card"><div class="who">R. Tanaka · Operations VP</div><h3>Trustworthy numbers</h3>
+      <p>Tanaka's team uses the dashboard every day and asked for Restocking.</p>
+      <div class="cue">Wants KPIs that follow the filters. <b>Value:</b> no more weekly spreadsheet reconciliation after R1 (week 4).</div></div>
+    <div class="card"><div class="who">IT department</div><h3>Safe changes</h3>
+      <p>Has held changes back because nothing is tested.</p>
+      <div class="cue">Wants tests and documentation before anything else ships.</div></div>
+  </div>
+</section>
+
+<!-- 3. Architecture -->
+<section class="slide">
+  <div class="kicker">2 · Architecture</div>
+  <h2>Same stack, better connected and protected</h2>
+  <div class="svgbox"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" role="img" aria-label="Current vs target architecture" font-family="'Noto Sans JP',sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker>
+    <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16a34a"/></marker>
+  </defs>
+  <!-- panel titles -->
+  <rect x="10" y="10" width="455" height="340" rx="14" fill="#fef2f2" stroke="#fecaca"/>
+  <rect x="495" y="10" width="455" height="340" rx="14" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="30" y="40" font-size="18" font-weight="700" fill="#991b1b">CURRENT</text>
+  <text x="515" y="40" font-size="18" font-weight="700" fill="#166534">TARGET</text>
+
+  <!-- current -->
+  <rect x="30" y="60" width="130" height="64" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="95" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">Vue views</text>
+  <text x="95" y="108" font-size="12" text-anchor="middle" fill="#64748b">filter bar, pages</text>
+  <rect x="190" y="60" width="110" height="64" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="245" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">api.js</text>
+  <text x="245" y="108" font-size="12" text-anchor="middle" fill="#64748b">API client</text>
+  <rect x="330" y="60" width="120" height="64" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="390" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">FastAPI</text>
+  <text x="390" y="108" font-size="12" text-anchor="middle" fill="#64748b">in-memory filtering</text>
+  <path d="M160 92H190" stroke="#64748b" stroke-width="2" marker-end="url(#ah)"/>
+  <path d="M300 92H330" stroke="#64748b" stroke-width="2" marker-end="url(#ah)"/>
+  <rect x="330" y="160" width="120" height="48" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="390" y="190" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">JSON data</text>
+  <path d="M390 124V160" stroke="#64748b" stroke-width="2" marker-end="url(#ah)"/>
+  <rect x="30" y="160" width="270" height="48" rx="8" fill="#fee2e2" stroke="#fca5a5"/>
+  <text x="165" y="182" font-size="14" font-weight="700" text-anchor="middle" fill="#991b1b">Overview KPIs: filters not applied</text>
+  <text x="165" y="199" font-size="12" text-anchor="middle" fill="#991b1b">cause confirmed in phase 0</text>
+  <rect x="30" y="236" width="130" height="44" rx="8" fill="#fff" stroke="#fca5a5" stroke-dasharray="5 4"/>
+  <text x="95" y="263" font-size="13" text-anchor="middle" fill="#991b1b">Reports: defects</text>
+  <rect x="175" y="236" width="125" height="44" rx="8" fill="#fff" stroke="#fca5a5" stroke-dasharray="5 4"/>
+  <text x="237" y="263" font-size="13" text-anchor="middle" fill="#991b1b">No tests</text>
+  <rect x="315" y="236" width="135" height="44" rx="8" fill="#fff" stroke="#fca5a5" stroke-dasharray="5 4"/>
+  <text x="382" y="263" font-size="13" text-anchor="middle" fill="#991b1b">Thin handoff memo</text>
+  <text x="30" y="316" font-size="13" fill="#7f1d1d">English-only screens in most modules · no Restocking</text>
+
+  <!-- target -->
+  <rect x="515" y="60" width="130" height="64" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="580" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">Vue views</text>
+  <text x="580" y="108" font-size="12" text-anchor="middle" fill="#64748b">EN / JA, dark option</text>
+  <rect x="675" y="60" width="110" height="64" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="730" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">api.js</text>
+  <text x="730" y="108" font-size="12" text-anchor="middle" fill="#64748b">all filters sent</text>
+  <rect x="815" y="60" width="120" height="64" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="875" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">FastAPI</text>
+  <text x="875" y="108" font-size="12" text-anchor="middle" fill="#64748b">filters on every KPI</text>
+  <path d="M645 92H675" stroke="#16a34a" stroke-width="2" marker-end="url(#ahg)"/>
+  <path d="M785 92H815" stroke="#16a34a" stroke-width="2" marker-end="url(#ahg)"/>
+  <rect x="815" y="160" width="120" height="48" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="875" y="190" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">JSON data</text>
+  <path d="M875 124V160" stroke="#16a34a" stroke-width="2" marker-end="url(#ahg)"/>
+  <rect x="515" y="160" width="270" height="48" rx="8" fill="#dcfce7" stroke="#86efac"/>
+  <text x="650" y="182" font-size="14" font-weight="700" text-anchor="middle" fill="#166534">Overview KPIs match filtered data</text>
+  <text x="650" y="199" font-size="12" text-anchor="middle" fill="#166534">R1 · live in week 4</text>
+  <rect x="515" y="236" width="130" height="44" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="580" y="263" font-size="13" text-anchor="middle" fill="#166534">Reports fixed (R2)</text>
+  <rect x="660" y="236" width="125" height="44" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="722" y="263" font-size="13" text-anchor="middle" fill="#166534">Restocking (R3)</text>
+  <rect x="800" y="236" width="135" height="44" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="867" y="263" font-size="13" text-anchor="middle" fill="#166534">Browser tests (R4)</text>
+  <text x="515" y="316" font-size="13" fill="#14532d">Architecture document (R5) · same stack, better protected</text>
+</svg>
+</div>
+  <p class="foot">We keep Vue 3, FastAPI and the JSON data files. The root cause of the R1 problem is confirmed against the real code in phase 0.</p>
+</section>
+
+<!-- 4. Requirements map -->
+<section class="slide">
+  <div class="kicker">3 · Requirements map</div>
+  <h2>Every requirement has an approach and a "done" test</h2>
+  <table>
+    <thead><tr><th>#</th><th>Requirement</th><th>Our approach</th><th>Done when</th><th>Scope</th></tr></thead>
+    <tbody>
+      <tr><td>R1</td><td>Overview page fixes</td><td>Smoke tests first, then trace each filter to each KPI and fix every break</td><td>Every KPI matches the filtered data (period, warehouse, category, status)</td><td><span class="pill p-in">Included</span></td></tr>
+      <tr><td>R2</td><td>Reports module</td><td>Defect inventory first, then prioritized fixes with tests</td><td>Every defect in the agreed inventory is fixed and tested</td><td><span class="pill p-in">Included</span></td></tr>
+      <tr><td>R3</td><td>Restocking recommendations</td><td>Short spec with Operations in phase 0, then build in the current stack</td><td>Orders recommended within the operator's budget cap</td><td><span class="pill p-in">Included</span></td></tr>
+      <tr><td>R4</td><td>Browser test automation</td><td>Three stages: smoke tests, existing flows, then Reports and Restocking</td><td>Agreed flows run automatically and pass; IT can run them</td><td><span class="pill p-in">Included</span></td></tr>
+      <tr><td>R5</td><td>Architecture document</td><td>Verified against the real code, not just the handoff memo</td><td>An IT engineer can run the app and find where to change it</td><td><span class="pill p-in">Included</span></td></tr>
+      <tr><td>D2</td><td>i18n extension</td><td>Done with the R2 i18n fixes, Tokyo-facing views first</td><td>Agreed modules switch between English and Japanese</td><td><span class="pill p-in">Included</span></td></tr>
+      <tr><td>D1 · D3</td><td>UI refresh, dark mode</td><td>Separate phase after core acceptance</td><td>Agreed theme or refresh applied; tests still pass</td><td><span class="pill p-opt">Priced option</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 5. Gaps and assumptions -->
+<section class="slide">
+  <div class="kicker">4 · RFP gaps and our assumptions</div>
+  <h2>Where the RFP is open, and what we assumed so the price holds</h2>
+  <table>
+    <thead><tr><th>#</th><th>Gap in the RFP</th><th>Our assumption</th></tr></thead>
+    <tbody>
+      <tr><td>A1</td><td>R2 says "at least 8" defects, none listed</td><td>Defect inventory fixed in writing at the end of phase 0. The cap covers it plus a stated contingency; later finds go through change control.</td></tr>
+      <tr><td>A2</td><td>No budget range, no target date</td><td>About 13 weeks for the core scope from contract signing, and 3 more weeks if the options are accepted.</td></tr>
+      <tr><td>A3</td><td>"Main user flows" (R4) not defined</td><td>The existing flows agreed with IT in phase 0, roughly 4–6. Reports and Restocking tests are added in phase 3.</td></tr>
+      <tr><td>A4</td><td>D1 "current standards" undefined</td><td>Priced as a refresh of existing pages on a common modern design system; the standard is confirmed before starting. D3 reuses the existing design tokens.</td></tr>
+      <tr><td>A5</td><td>No confidentiality terms</td><td>Source code and data covered by a mutual NDA, which we are ready to sign.</td></tr>
+      <tr><td>A6</td><td>No warranty terms</td><td>30-day warranty on delivered fixes, from the acceptance of each phase.</td></tr>
+      <tr><td>A7</td><td>Hosting and access not stated</td><td>Meridian provides a staging environment and the access needed to run the app and tests.</td></tr>
+    </tbody>
+  </table>
+  <p class="foot">Meridian is asked to confirm all of A1–A7 at contract signing.</p>
+</section>
+
+<!-- 6. Delivery order -->
+<section class="slide">
+  <div class="kicker">5 · Delivery order</div>
+  <h2>Smoke tests → R1 → R4/R5 → R2/R3, so every change after the first is verified</h2>
+  <div class="gantt">
+    <div></div>
+    <div class="wk">1</div><div class="wk">2</div><div class="wk">3</div><div class="wk">4</div><div class="wk">5</div><div class="wk">6</div><div class="wk">7</div><div class="wk">8</div><div class="wk">9</div><div class="wk">10</div><div class="wk">11</div><div class="wk">12</div><div class="wk">13</div><div class="wk">14</div><div class="wk">15</div><div class="wk">16</div>
+
+    <div class="nm">0 · Onboarding<small>Review, flows, inventory, R3 spec</small></div>
+    <div class="cell" style="grid-column:2/4"><div class="gb s" style="width:100%">Kickoff report</div></div><div style="grid-column:4/18"></div>
+
+    <div class="nm">1 · Trust the numbers<small>Smoke tests, then R1</small></div>
+    <div style="grid-column:2/4"></div><div class="cell" style="grid-column:4/6"><div class="gb" style="width:100%">R1 live</div></div><div style="grid-column:6/18"></div>
+
+    <div class="nm">2 · Make change safe<small>R4 existing flows, R5 doc</small></div>
+    <div style="grid-column:2/6"></div><div class="cell" style="grid-column:6/9"><div class="gb" style="width:100%">IT sign-off</div></div><div style="grid-column:9/18"></div>
+
+    <div class="nm">3 · Complete the scope<small>R2, R3, D2, R4 stage 3</small></div>
+    <div style="grid-column:2/9"></div><div class="cell" style="grid-column:9/15"><div class="gb g" style="width:100%">Final acceptance</div></div><div style="grid-column:15/18"></div>
+
+    <div class="nm">4 · Options<small>D3, D1 (if accepted)</small></div>
+    <div style="grid-column:2/15"></div><div class="cell" style="grid-column:15/18"><div class="gb o" style="width:100%">Options</div></div>
+  </div>
+  <div class="cols c2" style="margin-top:1.6vh">
+    <div class="card soft"><h3>Why tests before fixes</h3><p>The RFP lists tests last, but says IT is cautious about approving changes without them. We reverse the order so the first fix already ships with evidence.</p></div>
+    <div class="card"><h3>Every phase ends the same way</h3><p>A short demo, a written status report, and a milestone payment. Start date agreed at contract signing.</p></div>
+  </div>
+</section>
+
+<!-- 7. Team & roles -->
+<section class="slide">
+  <div class="kicker">6 · Team and roles</div>
+  <h2>2.5 full-time-equivalent people in every phase, with the mix following the work</h2>
+  <table>
+    <thead><tr><th>Role</th><th>Responsibility</th><th class="n">Ph 0</th><th class="n">Ph 1</th><th class="n">Ph 2</th><th class="n">Ph 3</th></tr></thead>
+    <tbody>
+      <tr><td>Lead / architect</td><td>Architecture review, R3 spec, phase demos, status reports, change control</td><td class="n">0.8</td><td class="n">0.4</td><td class="n">0.6</td><td class="n">0.4</td></tr>
+      <tr><td>Engineers</td><td>R1, R2, R3 and D2 implementation, including one Japanese-speaking engineer</td><td class="n">1.2</td><td class="n">1.3</td><td class="n">1.0</td><td class="n">1.6</td></tr>
+      <tr><td>QA engineer</td><td>Smoke tests, browser tests, defect inventory, acceptance support</td><td class="n">0.5</td><td class="n">0.8</td><td class="n">0.9</td><td class="n">0.5</td></tr>
+      <tr class="tot"><td>Total FTE</td><td></td><td class="n">2.5</td><td class="n">2.5</td><td class="n">2.5</td><td class="n">2.5</td></tr>
+    </tbody>
+  </table>
+  <div class="cols c3" style="margin-top:2.2vh">
+    <div class="card"><h3>Phase 0 and 1</h3><p>Lead-heavy start for the architecture review, then QA ramps up for the smoke tests.</p></div>
+    <div class="card"><h3>Phase 2</h3><p>QA leads: browser tests and the architecture document for IT.</p></div>
+    <div class="card"><h3>Phase 3 and options</h3><p>Engineers lead the build. Options D1 and D3 use one engineer and half a QA engineer.</p></div>
+  </div>
+</section>
+
+<!-- 8. Pricing -->
+<section class="slide">
+  <div class="kicker">7 · Pricing (illustrative)</div>
+  <h2>Capped time-and-materials, about $210,000 for phases 0–3, paid by milestone</h2>
+  <div class="cols c2">
+    <div>
+      <table>
+        <thead><tr><th>Item</th><th class="n">Hours</th><th class="n">Amount</th></tr></thead>
+        <tbody>
+          <tr><td>Phase 0 · Onboarding</td><td class="n">200</td><td class="n">$30,000</td></tr>
+          <tr><td>Phase 1 · Trust the numbers</td><td class="n">200</td><td class="n">$30,000</td></tr>
+          <tr><td>Phase 2 · Make change safe</td><td class="n">300</td><td class="n">$45,000</td></tr>
+          <tr><td>Phase 3 · Complete the scope</td><td class="n">600</td><td class="n">$90,000</td></tr>
+          <tr class="tot"><td>Core scope</td><td class="n">1,300</td><td class="n">$195,000</td></tr>
+          <tr><td>R2 contingency (only if used)</td><td class="n">~100</td><td class="n">$15,000</td></tr>
+          <tr class="tot"><td>Cap, phases 0–3</td><td class="n"></td><td class="n">~$210,000</td></tr>
+          <tr><td>Option D3 · dark mode</td><td class="n">~80</td><td class="n">~$12,000</td></tr>
+          <tr><td>Option D1 · UI modernization</td><td class="n">~165</td><td class="n">~$25,000</td></tr>
+        </tbody>
+      </table>
+      <p class="foot">Blended rate about $150 per hour, team of 2.5 FTE. Payment terms: net 30.</p>
+    </div>
+    <div>
+      <div class="stack" style="margin-bottom:1.6vh">
+        <div class="layer l3"><b>Options · outside the cap</b><span>D3 about $12k · D1 about $25k</span></div>
+        <div class="layer l2"><b>R2 contingency · inside the cap</b><span>About $15k, billed only if used</span></div>
+        <div class="layer l1"><b>Core scope · phases 0–3</b><span>$195k at agreed rates</span></div>
+      </div>
+      <div class="rule"><i>1</i><div><b>Paid by milestone:</b> $30k at the kickoff report, $30k when R1 is live, $45k at IT sign-off, $90k at final acceptance.</div></div>
+      <div class="rule"><i>2</i><div><b>Capped:</b> hours never exceed the cap. If the contingency runs out, we stop and report.</div></div>
+      <div class="rule"><i>3</i><div><b>Why not fixed price:</b> R2's size is unknown, and a fixed price would hide that risk in a bigger number.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9. Risk -->
+<section class="slide">
+  <div class="kicker">8 · Risk and mitigation</div>
+  <h2>The risks we see, and what we do about each</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td>R2 defect count is unknown</td><td>Cost and schedule overrun</td><td>Inventory fixed at end of phase 0; $15k contingency inside the cap; change control</td><td>Us</td></tr>
+      <tr><td>Handoff memo is incomplete</td><td>Hidden problems surface late</td><td>Architecture review against the real code in phase 0; findings feed R5</td><td>Us</td></tr>
+      <tr><td>R1 cause spread over several layers</td><td>R1 takes longer than planned</td><td>Smoke tests first; trace each KPI separately; demo at week 4</td><td>Us</td></tr>
+      <tr><td>"Main flows" for R4 disputed</td><td>Rework on tests</td><td>Flows signed off by IT in phase 0</td><td>IT + us</td></tr>
+      <tr><td>R3 forecast data is weak</td><td>Poor recommendations</td><td>Spec and data check in phase 0; show sample output early</td><td>Operations + us</td></tr>
+      <tr><td>Staging access is late</td><td>Phase 0 slips</td><td>Access list at contract signing (A7)</td><td>Meridian</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 10. Why us + experience -->
+<section class="slide">
+  <div class="kicker">9 · Why us</div>
+  <h2>Reliable delivery, in contrast to unfinished work</h2>
+  <div class="cmp">
+    <div class="col then"><h3>What the previous vendor left</h3>
+      <ul><li>KPIs not connected to the filters</li><li>Reports left in progress, no tests, thin handoff</li></ul></div>
+    <div class="col now"><h3>What we commit to</h3>
+      <ul><li>One thing finished at a time, each with a "done" test</li><li>Tests first, a demo and a report at every phase end</li></ul></div>
+  </div>
+  <div class="lab" style="font-size:1.6vh;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:2vh 0 .8vh">Related experience (fictional sample cases)</div>
+  <div class="cols c3">
+    <div class="card"><h3>Northwind Parts (sample)</h3><p>Sales dashboard figures did not match the ledger. We fixed every KPI that bypassed the filters.</p>
+      <div class="res">KPI gap 12% → under 0.5%. Weekly reconciliation 6 h → under 1 h.</div></div>
+    <div class="card"><h3>Harbor Robotics (sample)</h3><p>Logistics portal with no tests. Smoke tests first, then browser tests for 24 flows.</p>
+      <div class="res">Release approval 5 days → 1 day. Post-release defects −55%.</div></div>
+    <div class="card"><h3>Pacific Valve Co. (sample)</h3><p>Ordering by spreadsheet in 3 warehouses. Restocking view with a budget cap, plus EN/JA screens.</p>
+      <div class="res">Weekly ordering 6 h → 1.5 h. Stock-outs on top items −27%.</div></div>
+  </div>
+</section>
+
+<!-- 11. Next steps -->
+<section class="slide">
+  <div class="kicker">10 · Next steps</div>
+  <h2>From contract to the first visible fix in about four weeks</h2>
+  <div class="flow" style="margin-bottom:2.6vh">
+    <div class="box"><b>1 · Contract</b><span>Confirm A1–A7, start date, NDA</span></div>
+    <div class="arr">&rarr;</div>
+    <div class="box"><b>2 · Kickoff</b><span>Weeks 1–2: code review, flows, defect inventory, R3 spec</span></div>
+    <div class="arr">&rarr;</div>
+    <div class="box"><b>3 · Smoke tests</b><span>Week 3: safety net on the overview page</span></div>
+    <div class="arr">&rarr;</div>
+    <div class="box good"><b>4 · R1 live</b><span>Week 4: KPIs follow the filters</span></div>
+  </div>
+  <div class="cols c3">
+    <div class="card"><h3>We need from Meridian</h3><ul><li>Staging environment and access (A7)</li><li>A contact in IT and in Operations</li><li>Any known Reports defect list</li></ul></div>
+    <div class="card"><h3>You will see</h3><ul><li>Kickoff report with the defect inventory</li><li>A demo at every phase end</li><li>Written status reports and milestone invoices</li></ul></div>
+    <div class="card soft"><h3>Decisions for you</h3><ul><li>Confirm all assumptions A1–A7</li><li>Accept options D1 and D3 now or at the end of phase 2</li></ul></div>
+  </div>
+</section>
+
+<div class="hint">← → to navigate · Esc: first slide</div>
+<div class="pg" id="pg"></div>
+<div class="bar" id="bar"></div>
+</div>
+<script>
+const s=[...document.querySelectorAll('.slide')];let i=0;
+function show(n){i=Math.max(0,Math.min(s.length-1,n));s.forEach((e,k)=>e.classList.toggle('on',k===i));
+document.getElementById('pg').textContent=(i+1)+' / '+s.length;
+document.getElementById('bar').style.width=((i+1)/s.length*100)+'%';}
+addEventListener('keydown',e=>{
+ if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){e.preventDefault();show(i+1)}
+ if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();show(i-1)}
+ if(e.key==='Home'||e.key==='Escape')show(0);if(e.key==='End')show(s.length-1)});
+document.getElementById('deck').addEventListener('click',e=>show(e.clientX>innerWidth/2?i+1:i-1));
+show(0);
+</script>
+</body></html>

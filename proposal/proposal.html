@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposal: Inventory Dashboard Modernization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#1d4ed8;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans JP',sans-serif;line-height:1.75;font-size:16px}
+main{max-width:920px;margin:32px auto;padding:48px 56px;background:#fff;border:1px solid var(--line);border-radius:12px}
+h1{font-size:30px;line-height:1.3;margin:0 0 16px}
+h2{font-size:22px;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--accent)}
+h3{font-size:17px;margin:28px 0 6px}
+p,li{color:#1e293b}
+ul,ol{padding-left:24px}
+li{margin:4px 0}
+hr{border:0;border-top:1px solid var(--line);margin:24px 0}
+code{background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:.9em}
+.tw{overflow-x:auto;margin:16px 0}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:#f1f5f9;font-weight:700}
+tr:nth-child(even) td{background:#fafcff}
+figure.fig{margin:16px 0}figure.fig svg{width:100%;height:auto}
+@media(max-width:700px){main{padding:24px 18px;margin:0;border:0;border-radius:0}}
+@media print{body{background:#fff}main{border:0;margin:0;padding:0}}
+</style></head>
+<body><main>
+<h1>Proposal: Inventory Dashboard Modernization</h1>
+<p><strong>In response to:</strong> RFP MC-2026-0417 (Meridian Components, Inc.)</p>
+<p><strong>Submitted to:</strong> J. Okafor, Director of Procurement</p>
+<p><strong>Submitted by:</strong> Basecamp Consulting (sample)</p>
+<p><strong>Proposal deadline:</strong> May 8, 2026, 17:00 CT</p>
+<hr>
+<h2>1. Executive Summary</h2>
+<p>Meridian's operations team opens the dashboard every day, but the numbers on the overview page do not change when they pick a period or a warehouse. They have been rebuilding the figures in spreadsheets. IT is cautious about approving changes because there are no automated tests. These two problems feed each other: users do not trust the numbers, and IT cannot safely approve fixes.</p>
+<p>Our approach is built around <strong>reliable delivery</strong>. We will:</p>
+<ol>
+<li><strong>Put a thin safety net in place first.</strong> A small set of smoke tests on the overview page, so that the R1 fix is verified and IT can see the change is safe.</li>
+<li><strong>Fix R1 next.</strong> Every overview KPI will respond to the period, warehouse, category and status filters. This is the biggest complaint from R. Tanaka's team, and it is the quickest way to win back trust in the numbers.</li>
+<li><strong>Build the full safety net.</strong> Browser-test coverage of the existing flows (R4) and the architecture document (R5), so IT can approve future changes with confidence.</li>
+<li><strong>Then deliver the rest.</strong> Reports fixes (R2) and the Restocking view (R3), plus the desired i18n extension (D2) for the Tokyo team. The UI refresh (D1) and dark mode (D3) are offered as separately priced options.</li>
+</ol>
+<p><strong>Business value for Operations.</strong> Once the overview KPIs follow the filters, R. Tanaka's team can stop rebuilding numbers in spreadsheets and use the dashboard as the single source for the daily review. Our target is that the weekly spreadsheet reconciliation is no longer needed after R1 goes live in week 4. Restocking (R3) then turns the same trusted data into ordering decisions.</p>
+<p>We propose a <strong>capped time-and-materials</strong> price of about <strong>$210,000</strong> for the core scope. R2 asks us to fix "all" defects with only "at least 8" recorded, so the true size is unknown. A cap gives Meridian a firm ceiling, and the phased plan gives a firm schedule and a payment point for every phase.</p>
+<h2>2. Technical Approach</h2>
+<h3>R1: Overview page (dashboard) fixes</h3>
+<ul>
+<li><strong>Approach:</strong> Add smoke tests for the overview page first. Then trace how the filters (period, warehouse, category, order status) reach each KPI, from the Vue view through <code>client/src/api.js</code> to the FastAPI summary endpoint, and make every KPI respond to the selected filters.</li>
+<li><strong>Risks:</strong> Some KPIs may be computed on the client from unfiltered data, and some may be computed on the server without the filter. We will confirm which during the first days of the engagement.</li>
+<li><strong>Done when:</strong> Every KPI on the overview page shows values that match the filtered underlying data for the selected period, warehouse, category and status. The smoke tests prove this.</li>
+</ul>
+<h3>R2: Reports module</h3>
+<ul>
+<li><strong>Approach:</strong> Start with a defect inventory. Reproduce each of the eight or more recorded problems, search for further ones (filter behavior, i18n gaps, data-pattern mismatches), then fix them in priority order.</li>
+<li><strong>Risks:</strong> The real defect count is unknown and the previous vendor's notes are thin.</li>
+<li><strong>Done when:</strong> Every defect in the agreed inventory is fixed and covered by a test. Defects found later are added to the inventory and handled under the cap (see A1).</li>
+</ul>
+<h3>R3: Restocking recommendations</h3>
+<ul>
+<li><strong>Approach:</strong> Agree a short specification with R. Tanaka's team during phase 0: inputs (stock levels, demand forecast, operator budget cap), the recommendation rule, and how the budget cap behaves. Then build the Restocking view in the existing Vue/FastAPI stack.</li>
+<li><strong>Risks:</strong> The quality and granularity of the demand forecast data are unknown.</li>
+<li><strong>Done when:</strong> An operator can set a budget cap and get a recommended order list that stays within it, matching the agreed specification.</li>
+</ul>
+<h3>R4: Browser test automation</h3>
+<ul>
+<li><strong>Approach:</strong> Delivered in three steps. Stage 1 is minimal smoke tests on the overview page, delivered before the R1 fix. Stage 2 is full end-to-end coverage of the existing flows, agreed with IT (A3). Stage 3 adds tests for Reports (R2) and Restocking (R3) as they are fixed and built in phase 3.</li>
+<li><strong>Risks:</strong> The set of "major user flows" is not defined in the RFP.</li>
+<li><strong>Done when:</strong> The agreed flows run automatically and pass, and IT can run them before approving a change.</li>
+</ul>
+<h3>R5: Architecture document</h3>
+<ul>
+<li><strong>Approach:</strong> A concise overview of the current system: components, data flow, filter system, known problems, and how to run and test it. We will verify it against the code rather than relying on the previous vendor's handoff memo, which is incomplete.</li>
+<li><strong>Done when:</strong> An IT engineer who has not seen the code can start the app, find the main modules, and understand where to make a change.</li>
+</ul>
+<h3>D2: Internationalization (desired)</h3>
+<ul>
+<li><strong>Approach:</strong> Extend i18n to the remaining modules, starting with the views the Tokyo team uses most. This is handled together with the i18n defects in R2. A Japanese-speaking engineer is on the team for this work.</li>
+<li><strong>Done when:</strong> The agreed modules switch between English and Japanese.</li>
+</ul>
+<h3>D1 (UI modernization) and D3 (dark mode): priced options</h3>
+<p>Both are offered as separately priced options, outside the capped price, so the core scope stays predictable. Meridian can accept either or both at contract signing or at the end of phase 2.</p>
+<ul>
+<li><strong>D3 (dark mode), about $12,000:</strong> An operator-selectable theme for the low-light warehouse terminals. Applied through the existing design tokens, so it is a contained piece of work.</li>
+<li><strong>D1 (UI modernization), about $25,000:</strong> A visual refresh. We will confirm which "current standards" Meridian has in mind (A4) before starting it.</li>
+<li><strong>Done when:</strong> The agreed theme or visual refresh is applied to all pages in scope, and the browser tests still pass.</li>
+</ul>
+<h3>Current and target architecture</h3>
+<p>We keep the current stack (Vue 3 with Vite, FastAPI, JSON data files). The change is in how the pieces are connected and protected, not in replacing them.</p>
+<p>Figure 1: Current vs. target architecture</p>
+<figure class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" role="img" aria-label="Current vs target architecture" font-family="'Noto Sans JP',sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker>
+    <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16a34a"/></marker>
+  </defs>
+  <!-- panel titles -->
+  <rect x="10" y="10" width="455" height="340" rx="14" fill="#fef2f2" stroke="#fecaca"/>
+  <rect x="495" y="10" width="455" height="340" rx="14" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="30" y="40" font-size="18" font-weight="700" fill="#991b1b">CURRENT</text>
+  <text x="515" y="40" font-size="18" font-weight="700" fill="#166534">TARGET</text>
+
+  <!-- current -->
+  <rect x="30" y="60" width="130" height="64" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="95" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">Vue views</text>
+  <text x="95" y="108" font-size="12" text-anchor="middle" fill="#64748b">filter bar, pages</text>
+  <rect x="190" y="60" width="110" height="64" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="245" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">api.js</text>
+  <text x="245" y="108" font-size="12" text-anchor="middle" fill="#64748b">API client</text>
+  <rect x="330" y="60" width="120" height="64" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="390" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">FastAPI</text>
+  <text x="390" y="108" font-size="12" text-anchor="middle" fill="#64748b">in-memory filtering</text>
+  <path d="M160 92H190" stroke="#64748b" stroke-width="2" marker-end="url(#ah)"/>
+  <path d="M300 92H330" stroke="#64748b" stroke-width="2" marker-end="url(#ah)"/>
+  <rect x="330" y="160" width="120" height="48" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text x="390" y="190" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">JSON data</text>
+  <path d="M390 124V160" stroke="#64748b" stroke-width="2" marker-end="url(#ah)"/>
+  <rect x="30" y="160" width="270" height="48" rx="8" fill="#fee2e2" stroke="#fca5a5"/>
+  <text x="165" y="182" font-size="14" font-weight="700" text-anchor="middle" fill="#991b1b">Overview KPIs: filters not applied</text>
+  <text x="165" y="199" font-size="12" text-anchor="middle" fill="#991b1b">cause confirmed in phase 0</text>
+  <rect x="30" y="236" width="130" height="44" rx="8" fill="#fff" stroke="#fca5a5" stroke-dasharray="5 4"/>
+  <text x="95" y="263" font-size="13" text-anchor="middle" fill="#991b1b">Reports: defects</text>
+  <rect x="175" y="236" width="125" height="44" rx="8" fill="#fff" stroke="#fca5a5" stroke-dasharray="5 4"/>
+  <text x="237" y="263" font-size="13" text-anchor="middle" fill="#991b1b">No tests</text>
+  <rect x="315" y="236" width="135" height="44" rx="8" fill="#fff" stroke="#fca5a5" stroke-dasharray="5 4"/>
+  <text x="382" y="263" font-size="13" text-anchor="middle" fill="#991b1b">Thin handoff memo</text>
+  <text x="30" y="316" font-size="13" fill="#7f1d1d">English-only screens in most modules · no Restocking</text>
+
+  <!-- target -->
+  <rect x="515" y="60" width="130" height="64" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="580" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">Vue views</text>
+  <text x="580" y="108" font-size="12" text-anchor="middle" fill="#64748b">EN / JA, dark option</text>
+  <rect x="675" y="60" width="110" height="64" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="730" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">api.js</text>
+  <text x="730" y="108" font-size="12" text-anchor="middle" fill="#64748b">all filters sent</text>
+  <rect x="815" y="60" width="120" height="64" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="875" y="88" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">FastAPI</text>
+  <text x="875" y="108" font-size="12" text-anchor="middle" fill="#64748b">filters on every KPI</text>
+  <path d="M645 92H675" stroke="#16a34a" stroke-width="2" marker-end="url(#ahg)"/>
+  <path d="M785 92H815" stroke="#16a34a" stroke-width="2" marker-end="url(#ahg)"/>
+  <rect x="815" y="160" width="120" height="48" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="875" y="190" font-size="14" font-weight="700" text-anchor="middle" fill="#0f172a">JSON data</text>
+  <path d="M875 124V160" stroke="#16a34a" stroke-width="2" marker-end="url(#ahg)"/>
+  <rect x="515" y="160" width="270" height="48" rx="8" fill="#dcfce7" stroke="#86efac"/>
+  <text x="650" y="182" font-size="14" font-weight="700" text-anchor="middle" fill="#166534">Overview KPIs match filtered data</text>
+  <text x="650" y="199" font-size="12" text-anchor="middle" fill="#166534">R1 · live in week 4</text>
+  <rect x="515" y="236" width="130" height="44" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="580" y="263" font-size="13" text-anchor="middle" fill="#166534">Reports fixed (R2)</text>
+  <rect x="660" y="236" width="125" height="44" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="722" y="263" font-size="13" text-anchor="middle" fill="#166534">Restocking (R3)</text>
+  <rect x="800" y="236" width="135" height="44" rx="8" fill="#fff" stroke="#86efac"/>
+  <text x="867" y="263" font-size="13" text-anchor="middle" fill="#166534">Browser tests (R4)</text>
+  <text x="515" y="316" font-size="13" fill="#14532d">Architecture document (R5) · same stack, better protected</text>
+</svg>
+</figure>
+<div class="tw"><table><thead><tr><th>Layer</th><th>Current</th><th>Target</th></tr></thead><tbody>
+<tr><td>Overview KPIs</td><td>Do not follow the filters</td><td>Every KPI follows period, warehouse, category and status</td></tr>
+<tr><td>Reports</td><td>Several known defects, some filters not connected</td><td>Defects in the agreed inventory fixed and tested</td></tr>
+<tr><td>New features</td><td>None for ordering</td><td>Restocking view and recommendations (R3)</td></tr>
+<tr><td>Tests</td><td>None</td><td>Smoke tests, then browser tests of the main flows (R4)</td></tr>
+<tr><td>Documentation</td><td>Thin handoff memo</td><td>Architecture document verified against the code (R5)</td></tr>
+<tr><td>Languages</td><td>English-only screens in most modules</td><td>English and Japanese in the agreed modules (D2)</td></tr>
+</tbody></table></div>
+<h3>Requirement coverage</h3>
+<div class="tw"><table><thead><tr><th>#</th><th>Requirement</th><th>Phase</th><th>Approach in short</th></tr></thead><tbody>
+<tr><td>R1</td><td>Overview page fixes</td><td>1</td><td>Smoke tests first, then wire every KPI to the filters</td></tr>
+<tr><td>R2</td><td>Reports module</td><td>3</td><td>Defect inventory, then prioritized fixes</td></tr>
+<tr><td>R3</td><td>Restocking recommendations</td><td>3</td><td>Short specification with Operations, then build</td></tr>
+<tr><td>R4</td><td>Browser test automation</td><td>1 (smoke), 2 (existing flows), 3 (Reports, Restocking)</td><td>Three stages, flows agreed with IT</td></tr>
+<tr><td>R5</td><td>Architecture document</td><td>2</td><td>Verified against the real code</td></tr>
+<tr><td>D2</td><td>i18n extension</td><td>3</td><td>Together with the R2 i18n fixes</td></tr>
+<tr><td>D1</td><td>UI modernization</td><td>Option (4)</td><td>Separately priced option</td></tr>
+<tr><td>D3</td><td>Dark mode</td><td>Option (4)</td><td>Separately priced option</td></tr>
+</tbody></table></div>
+<h2>3. Related Experience</h2>
+<p>The following are sample cases written for this exercise. They are fictional.</p>
+<div class="tw"><table><thead><tr><th>Case (fictional)</th><th>What we did</th><th>Measured result</th></tr></thead><tbody>
+<tr><td><strong>Northwind Parts Distribution (sample)</strong>: sales dashboard whose figures did not match the ledger</td><td>Traced filter handling across the UI, API and data layer, and fixed every KPI that bypassed the filters</td><td>KPI gap against the ledger fell from 12% to under 0.5%. Weekly spreadsheet reconciliation dropped from 6 hours to under 1 hour.</td></tr>
+<tr><td><strong>Harbor Robotics (sample)</strong>: logistics portal with no automated tests</td><td>Built smoke tests first, then browser tests for 24 main flows, run on every change</td><td>Release approval time fell from 5 days to 1 day. Defects found after release fell by 55% in two quarters.</td></tr>
+<tr><td><strong>Pacific Valve Co. (sample)</strong>: ordering by spreadsheet across three warehouses</td><td>Added a restocking view that recommends orders within a budget cap, and added English and Japanese screens</td><td>Weekly ordering time fell from 6 hours to 1.5 hours. Stock-outs on top-selling items fell by 27% in six months.</td></tr>
+</tbody></table></div>
+<h2>4. Team and Roles</h2>
+<p>The core team averages 2.5 full-time-equivalent people (FTE) in every phase. The mix changes with the work.</p>
+<div class="tw"><table><thead><tr><th>Role</th><th>Responsibility</th><th>Phase 0</th><th>Phase 1</th><th>Phase 2</th><th>Phase 3</th></tr></thead><tbody>
+<tr><td>Lead / architect</td><td>Architecture review, R3 spec, phase demos, status reports, change control</td><td>0.8</td><td>0.4</td><td>0.6</td><td>0.4</td></tr>
+<tr><td>Engineers (including one Japanese-speaking engineer)</td><td>R1, R2, R3 and D2 implementation</td><td>1.2</td><td>1.3</td><td>1.0</td><td>1.6</td></tr>
+<tr><td>QA engineer</td><td>Smoke tests, browser tests, defect inventory, acceptance support</td><td>0.5</td><td>0.8</td><td>0.9</td><td>0.5</td></tr>
+<tr><td><strong>Total FTE</strong></td><td></td><td><strong>2.5</strong></td><td><strong>2.5</strong></td><td><strong>2.5</strong></td><td><strong>2.5</strong></td></tr>
+</tbody></table></div>
+<p>For options D1 and D3 (phase 4), one engineer and half a QA engineer are assigned, within the option prices.</p>
+<h2>5. Schedule</h2>
+<div class="tw"><table><thead><tr><th>Phase</th><th>Weeks</th><th>Contents</th><th>Milestone</th></tr></thead><tbody>
+<tr><td>0. Onboarding</td><td>1–2</td><td>Environment setup, code and handoff review, agree test flows, defect inventory and R3 specification</td><td>Kickoff report, agreed inventory and assumptions</td></tr>
+<tr><td>1. Trust the numbers</td><td>3–4</td><td>Smoke tests on the overview page (R4 stage 1), R1 fix</td><td>Overview KPIs match the filtered data</td></tr>
+<tr><td>2. Make change safe</td><td>5–7</td><td>Browser tests for the existing flows (R4 stage 2), architecture document (R5)</td><td>IT can approve changes using the tests</td></tr>
+<tr><td>3. Complete the scope</td><td>8–13</td><td>R2 fixes, R3 Restocking view, D2 i18n, tests for Reports and Restocking (R4 stage 3), user acceptance</td><td>Final acceptance</td></tr>
+<tr><td>4. Options (if accepted)</td><td>14–16</td><td>D3 dark mode, D1 UI refresh</td><td>Option acceptance</td></tr>
+</tbody></table></div>
+<p>Each phase ends with a short demonstration and a written status report. We will agree the start date at contract signing (A2).</p>
+<h2>6. Price and Assumptions</h2>
+<h3>Price</h3>
+<p><strong>Capped time-and-materials.</strong> Work is billed at a blended rate of about $150 per hour and cannot exceed the cap. The figures below are illustrative.</p>
+<div class="tw"><table><thead><tr><th>Item</th><th>Basis</th><th>Amount</th></tr></thead><tbody>
+<tr><td>Phase 0: Onboarding</td><td>200 h (2 weeks × 2.5 FTE)</td><td>$30,000</td></tr>
+<tr><td>Phase 1: Trust the numbers</td><td>200 h</td><td>$30,000</td></tr>
+<tr><td>Phase 2: Make change safe</td><td>300 h</td><td>$45,000</td></tr>
+<tr><td>Phase 3: Complete the scope</td><td>600 h</td><td>$90,000</td></tr>
+<tr><td><strong>Core scope, phases 0–3</strong></td><td>1,300 h</td><td><strong>$195,000</strong></td></tr>
+<tr><td>R2 contingency (inside the cap, billed only if used)</td><td>About 100 h</td><td>$15,000</td></tr>
+<tr><td><strong>Cap for phases 0–3</strong></td><td></td><td><strong>about $210,000</strong></td></tr>
+<tr><td>Option D3: dark mode</td><td>About 80 h</td><td>about $12,000</td></tr>
+<tr><td>Option D1: UI modernization</td><td>About 165 h</td><td>about $25,000</td></tr>
+</tbody></table></div>
+<p><strong>Payment by milestone.</strong> Each phase is invoiced when its milestone is accepted:</p>
+<div class="tw"><table><thead><tr><th>Milestone</th><th>Invoice</th></tr></thead><tbody>
+<tr><td>Phase 0: kickoff report and agreed defect inventory accepted</td><td>$30,000</td></tr>
+<tr><td>Phase 1: R1 live, KPIs match the filtered data</td><td>$30,000</td></tr>
+<tr><td>Phase 2: IT sign-off on tests and architecture document</td><td>$45,000</td></tr>
+<tr><td>Phase 3: final acceptance</td><td>$90,000, plus any R2 contingency actually used</td></tr>
+<tr><td>Options (if accepted): option acceptance</td><td>Option price</td></tr>
+</tbody></table></div>
+<p>Payment terms are net 30 days from invoice.</p>
+<p><strong>Change control:</strong> If the R2 contingency is used up, we stop and report before doing more. Any work beyond the cap is done only after Meridian approves it in writing.</p>
+<h3>Assumptions</h3>
+<p>The RFP leaves several points open. We have used the following assumptions to prepare this proposal. We keep the current stack (Vue 3, FastAPI, JSON data files).</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Gap in the RFP</th><th>Our assumption</th></tr></thead><tbody>
+<tr><td>A1</td><td>R2 defect count is "at least 8"</td><td>The defect inventory is fixed at the end of phase 0 and agreed in writing. The cap covers that inventory plus the stated contingency; defects found later are handled under the change control above.</td></tr>
+<tr><td>A2</td><td>No budget range and no target delivery date</td><td>We plan for about 13 weeks for the core scope (phases 0–3) from contract signing, and 3 more weeks if the options are accepted.</td></tr>
+<tr><td>A3</td><td>"Main user flows" for R4 are not defined</td><td>Full coverage means the existing flows agreed with IT in phase 0, roughly 4–6 flows (for example filtering, orders, inventory, spending). Reports and Restocking tests are added in phase 3.</td></tr>
+<tr><td>A4</td><td>D1 refers to "current standards" with no definition</td><td>The D1 price assumes a refresh of the existing pages using a common modern design system, not a full redesign. We will confirm the standard before starting D1. D3 uses the existing design tokens.</td></tr>
+<tr><td>A5</td><td>No confidentiality terms</td><td>The source code and Meridian data are covered by a mutual NDA, which we are ready to sign.</td></tr>
+<tr><td>A6</td><td>No warranty or maintenance terms</td><td>We offer a 30-day warranty on delivered fixes, starting at the acceptance of each phase.</td></tr>
+<tr><td>A7</td><td>Hosting and environment access are not stated</td><td>Meridian provides a staging environment and the access needed to run the application and the tests.</td></tr>
+</tbody></table></div>
+<p>Meridian is asked to confirm all of A1–A7 at contract signing.</p>
+<h3>Why this order</h3>
+<p>The RFP lists the tests (R4) and the architecture document (R5) after the fixes, but its own text says IT is cautious about approving changes without tests. We therefore deliver a minimal set of tests before the R1 fix, and the full set before R2 and R3, so that every change after the first can be verified.</p>
+</main></body></html>
