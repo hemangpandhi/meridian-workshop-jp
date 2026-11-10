@@ -125,10 +125,23 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { api } from '../api'
+import { useFilters } from '../composables/useFilters'
 
 export default {
   name: 'Reports',
+  setup() {
+    // Shared filter state (same singleton the Overview page uses)
+    const { selectedPeriod, selectedLocation, selectedCategory, selectedStatus, getCurrentFilters } = useFilters()
+    return { selectedPeriod, selectedLocation, selectedCategory, selectedStatus, getCurrentFilters }
+  },
+  watch: {
+    // Reload whenever any shared filter changes
+    selectedPeriod() { this.loadData() },
+    selectedLocation() { this.loadData() },
+    selectedCategory() { this.loadData() },
+    selectedStatus() { this.loadData() }
+  },
   data() {
     return {
       loading: true,
@@ -151,16 +164,16 @@ export default {
       try {
         this.loading = true
 
+        const filters = this.getCurrentFilters()
+
         // Fetch quarterly data
         console.log('Fetching quarterly data...')
-        const quarterlyResponse = await axios.get('/api/reports/quarterly')
-        this.quarterlyData = quarterlyResponse.data
+        this.quarterlyData = await api.getQuarterlyReports(filters)
         console.log('Quarterly data:', this.quarterlyData)
 
         // Fetch monthly data
         console.log('Fetching monthly data...')
-        const monthlyResponse = await axios.get('/api/reports/monthly-trends')
-        this.monthlyData = monthlyResponse.data
+        this.monthlyData = await api.getMonthlyTrends(filters)
         console.log('Monthly data:', this.monthlyData)
 
         // Calculate summary stats
